@@ -1,0 +1,36 @@
+name: napari-asegmenter
+display_name: ASegmenter
+# use 'hidden' to remove plugin from napari hub search results
+visibility: public
+# see https://napari.org/stable/plugins/technical_references/manifest.html#fields for valid categories
+# categories: []
+contributions:
+  commands:
+    - id: napari-asegmenter.make_container_widget
+      python_name: napari_asegmenter:ImageThreshold
+      title: Make threshold Container widget
+    - id: napari-asegmenter.make_magic_widget
+      python_name: napari_asegmenter:threshold_magic_widget
+      title: Make threshold magic widget
+    - id: napari-asegmenter.make_function_widget
+      python_name: napari_asegmenter:threshold_autogenerate_widget
+      title: Make threshold function widget
+    - id: napari-asegmenter.make_qwidget
+      python_name: napari_asegmenter:ExampleQWidget
+      title: Make example QWidget
+  widgets:
+    - command: napari-asegmenter.make_container_widget
+      display_name: Container Threshold
+    - command: napari-asegmenter.make_magic_widget
+      display_name: Magic Threshold
+    - command: napari-asegmenter.make_function_widget
+      autogenerate: true
+      display_name: Autogenerate Threshold
+    - command: napari-asegmenter.make_qwidget
+      display_name: Example QWidget
+  menus:
+    napari/layers/segment:
+      - command: napari-asegmenter.make_container_widget
+      - command: napari-asegmenter.make_magic_widget
+      - command: napari-asegmenter.make_function_widget
+      - command: napari-asegmenter.make_qwidget

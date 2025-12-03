@@ -1,0 +1,18 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v2.0.1
+_src_path: https://github.com/napari/napari-plugin-template
+display_name: ASegmenter
+email: arthur.masson@inria.fr
+full_name: Arthur Masson
+github_repository_url: https://github.com/arthursw/napari-asegmenter
+github_username_or_organization: arthursw
+include_reader_plugin: false
+include_sample_data_plugin: false
+include_widget_plugin: true
+include_writer_plugin: false
+install_dependabot: true
+install_precommit: true
+license: MIT
+module_name: napari_asegmenter
+plugin_name: napari-asegmenter
+short_description: Segment images using either Stardist, Cellpose or SAM; using Appose-python.
