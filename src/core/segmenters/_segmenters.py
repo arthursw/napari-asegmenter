@@ -26,12 +26,7 @@ def segment_files(module_name, image_path, segmentation_path, parameters):
 def segment_shared_memory(
     module_name, shared_image, shared_segmentation, parameters
 ):
-    from _memory_manager import get_shared_array  # type: ignore
-
-    with get_shared_array(shared_image) as image:
-        labels = _segment(module_name, image, parameters)
-        with get_shared_array(shared_segmentation) as segmentation:
-            segmentation[:] = labels
+    shared_segmentation = _segment(module_name, shared_image, parameters)
     return shared_segmentation
 
 

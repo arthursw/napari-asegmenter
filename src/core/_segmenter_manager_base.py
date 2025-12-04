@@ -4,12 +4,9 @@ from pathlib import Path
 from typing import cast
 
 import numpy as np
+from appose.builder.pixi import PixiBuilder
 from napari.qt.threading import thread_worker
-from wetlands.environment import Environment
-from wetlands.environment_manager import EnvironmentManager
 
-WETLANDS_INSTALL_DIR = Path.home() / ".local" / "share" / "wetlands"
-WETLANDS_INSTALL_DIR.mkdir(parents=True, exist_ok=True)
 PYTHON_VERSION = "3.10"
 SEGMENTERS_PATH = str(
     Path(__file__).resolve().parent / "segmenters" / "_segmenters.py"
@@ -79,28 +76,32 @@ class SegmenterManagerBase:
         },
     }
 
-    _environment_manager: EnvironmentManager | None = None
-    _environments: list[Environment] = []
+    _services = []
 
     def _initialize_environment(self, name: str):
         config = self.config[name]
-        if self._environment_manager is None:
-            self._environment_manager = EnvironmentManager(debug=True)
-        environment = self._environment_manager.create(
-            name, config["dependencies"]
+        environment = (
+            PixiBuilder()
+            .conda(config["dependencies"]["conda"] + ["appose"])
+            .pypi(config["dependencies"]["pip"])
+            .base("envs/" + name)
+            .log_debug()
+            .build()
         )
-        if environment not in self._environments:
-            self._environments.append(environment)
-        launched = environment.launched()
-        if not launched:
-            environment.launch()
-        segmenter_module = environment.importModule(SEGMENTERS_PATH)
-        # if not launched:
-        #     worker = cast(
-        #         WorkerBase,
-        #         log_output(cast(ExternalEnvironment, environment).process),
-        #     )
-        #     worker.start()
+        import sys
+
+        service = environment.python()
+        self._services.append(service)
+        service.debug(lambda msg: print(msg, file=sys.stderr, end=""))
+
+        segmenter_module = service.task(SEGMENTERS_PATH).wait_for().result()
+
+        with open(SEGMENTERS_PATH) as f:
+            segmenters_script = f.read()
+            segmenter_module = (
+                service.task(segmenters_script).wait_for().result()
+            )
+
         return segmenter_module
 
     def perform_segmentation(self, image: np.ndarray, segmenter: str):
@@ -119,9 +120,9 @@ class SegmenterManagerBase:
             return np.load(output_path)
 
     def exit_environments(self):
-        for environment in self._environments:
-            environment.exit()
-        self._environments = []
+        for service in self._services:
+            service.close()
+        self._services = []
 
     def exit(self):
         self.exit_environments()

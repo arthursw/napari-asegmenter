@@ -1,5 +1,4 @@
 from napari.viewer import Viewer
-from napari_wsegmenter.core._segmenter_manager import SegmenterManager
 from qtpy.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -8,6 +7,8 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from core._segmenter_manager import SegmenterManager
 
 
 class SegmenterWidget(QWidget):

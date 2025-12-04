@@ -1,22 +1,17 @@
-from multiprocessing import shared_memory
 from typing import cast
 
+import appose
 import numpy as np
-from napari_wsegmenter.core._memory_manager import (
-    create_shared_array,
-    release_shared_memory,
-    share_array,
-    wrap,
-)
-from napari_wsegmenter.core._segmenter_manager_base import SegmenterManagerBase
+
+from core._segmenter_manager_base import SegmenterManagerBase
 
 
 class SegmenterManager(SegmenterManagerBase):
 
-    _shared_image: np.ndarray | None = None
-    _shm_image: shared_memory.SharedMemory | None = None
-    _shared_segmentation: np.ndarray | None = None
-    _shm_segmentation: shared_memory.SharedMemory | None = None
+    _shared_image: appose.NDArray | None = None
+    _shm_image: appose.SharedMemory | None = None
+    _shared_segmentation: appose.NDArray | None = None
+    _shm_segmentation: appose.SharedMemory | None = None
 
     def _initialize_shared_memory(self, image: np.ndarray):
         if (
@@ -32,9 +27,23 @@ class SegmenterManager(SegmenterManagerBase):
                 return
             else:
                 self.release_shared_memory()
-        self._shared_image, self._shm_image = share_array(image)
-        self._shared_segmentation, self._shm_segmentation = (
-            create_shared_array(image.shape[:2], dtype="uint8")
+        self._shm_image = appose.SharedMemory(
+            create=True,
+            rsize=int(np.prod(image.shape) * np.dtype(image.dtype).itemsize),
+        )
+        self._shared_image = appose.NDArray(
+            str(image.dtype), list(image.shape), self._shm_image
+        )
+
+        segmentation_shape = image.shape[:2]
+        self._shm_segmentation = appose.SharedMemory(
+            create=True,
+            rsize=int(
+                np.prod(segmentation_shape) * np.dtype("uint8").itemsize
+            ),
+        )
+        self._shared_segmentation = appose.NDArray(
+            "uint8", list(segmentation_shape), self._shm_segmentation
         )
 
     def perform_segmentation(
@@ -48,19 +57,22 @@ class SegmenterManager(SegmenterManagerBase):
             return
         if self._shm_image is None or self._shm_segmentation is None:
             return
+
         segmenter_module.segment_shared_memory(
             self.config[segmenter]["module_name"],
-            wrap(self._shared_image, self._shm_image),
-            wrap(self._shared_segmentation, self._shm_segmentation),
+            self._shared_image,
+            self._shared_segmentation,
             self.config[segmenter]["default_parameters"],
         )
         return self._shared_segmentation
 
     def release_shared_memory(self):
-        release_shared_memory(self._shm_image)
-        release_shared_memory(self._shm_segmentation)
-        self._shm_image = None
-        self._shm_segmentation = None
+        if self._shm_image:
+            self._shm_image.dispose()
+            self._shm_image = None
+        if self._shm_segmentation:
+            self._shm_segmentation.dispose()
+            self._shm_segmentation = None
 
     def exit(self):
         self.release_shared_memory()

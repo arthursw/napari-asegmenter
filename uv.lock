@@ -61,6 +61,11 @@ wheels = [
 ]
 
 [[package]]
+name = "appose"
+version = "0.8.0.dev0"
+source = { git = "https://github.com/apposed/appose-python.git?rev=main#16a94bc1aa363f7092c633bc65cca152c156aa30" }
+
+[[package]]
 name = "asciitree"
 version = "0.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1310,6 +1315,7 @@ qt = [
 name = "napari-asegmenter"
 source = { editable = "." }
 dependencies = [
+    { name = "appose" },
     { name = "magicgui" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1335,6 +1341,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "appose", git = "https://github.com/apposed/appose-python.git?rev=main" },
     { name = "magicgui" },
     { name = "napari", extras = ["all"], marker = "extra == 'all'" },
     { name = "numpy" },

@@ -35,6 +35,7 @@ dependencies = [
     "pyqt5-qt5==5.15.17",
     "qtpy==2.4.3",
     "scikit-image",
+    "appose",
 ]
 
 [project.optional-dependencies]
@@ -131,3 +132,6 @@ exclude = [
     "*_vendor*",
 ]
 fix = true
+
+[tool.uv.sources]
+appose = { git = "https://github.com/apposed/appose-python.git", rev = "main" }

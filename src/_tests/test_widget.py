@@ -2,7 +2,8 @@ import logging
 
 import numpy as np
 import pytest
-from napari_wsegmenter._widget import (
+
+from napari_asegmenter._widget import (
     SegmenterWidget,
 )
 

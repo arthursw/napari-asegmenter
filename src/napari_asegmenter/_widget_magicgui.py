@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 from magicgui import magicgui
 from napari.qt.threading import thread_worker
-from wetlands.environment_manager import EnvironmentManager
+
+from ..core.appose_wrapper import EnvironmentManager
 
 if TYPE_CHECKING:
     import napari
