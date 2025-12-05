@@ -18,7 +18,7 @@ def _create_segmentation(annotations):
 predictor, mask_generator, last_parameters = None, None, None
 
 
-def segment(image, parameters):
+def segment(image, parameters, segmentation=None):
     import torch  # type: ignore
     from sam2.automatic_mask_generator import (  # type: ignore
         SAM2AutomaticMaskGenerator,  # type: ignore
@@ -53,4 +53,7 @@ def segment(image, parameters):
         print("Perform segmentation")
         masks = mask_generator.generate(image)
         print("Convert segmentation")
-        return _create_segmentation(masks)
+        masks = _create_segmentation(masks)
+        if segmentation is not None:
+            segmentation[:] = masks[:]
+        return masks

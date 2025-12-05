@@ -4,7 +4,7 @@ import skimage
 model, last_parameters = None, None
 
 
-def segment(image, parameters) -> np.ndarray | None:
+def segment(image, parameters, segmentation=None) -> np.ndarray | None:
 
     print("Loading libraries...")
     from csbdeep.utils import normalize  # type: ignore
@@ -48,4 +48,6 @@ def segment(image, parameters) -> np.ndarray | None:
     print("Computing segmentation")
     image_normalized = normalize(image)
     labels, _ = model.predict_instances(image_normalized)
+    if segmentation is not None:
+        segmentation[:] = labels[:]
     return labels

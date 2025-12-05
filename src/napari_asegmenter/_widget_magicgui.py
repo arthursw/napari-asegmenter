@@ -3,15 +3,14 @@ This is a minimalist example using magicgui, but I cannot find the close event t
 """
 
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
+from appose import NDArray, SharedMemory
+from appose.builder.pixi import PixiBuilder
 from magicgui import magicgui
 from napari.qt.threading import thread_worker
-
-from ..core.appose_wrapper import EnvironmentManager
 
 if TYPE_CHECKING:
     import napari
@@ -81,23 +80,89 @@ def log_output(process: subprocess.Popen) -> None:
         print(line.strip())
 
 
-def initialize_environment(name: str):
-    global environment_manager
-    if environment_manager is None:
-        environment_manager = EnvironmentManager(debug=True)
-    environment = environment_manager.create(
-        name, config[name]["dependencies"]
+_services = []
+
+
+def _initialize_environment(name: str):
+    econfig = config[name]
+    environment = (
+        PixiBuilder()
+        .conda(econfig["dependencies"]["conda"] + ["appose"])
+        .pypi(econfig["dependencies"]["pip"])
+        .base("envs/" + name)
+        .log_debug()
+        .build()
     )
-    # launched = environment.launched()
-    # if not launched:
-    environment.launch()
-    segmenter_module = environment.importModule(
-        str(config[name]["segmenter_script_name"])
+    import sys
+
+    service = environment.python()
+    _services.append(service)
+    service.debug(lambda msg: print(msg, file=sys.stderr, end=""))
+
+    segmenter_path = (
+        Path(__file__).resolve().parent / "segmenters" / f"{name}.py"
     )
-    # if not launched:
-    #     worker = cast(WorkerBase, log_output(segmenter_module.process))
-    #     worker.start()
+    segmenter_module = service.task(str(segmenter_path)).wait_for().result()
+
+    with open(segmenter_path) as f:
+        segmenters_script = f.read()
+        segmenter_module = service.task(segmenters_script).wait_for().result()
+
     return segmenter_module
+
+
+_shared_image = None
+_shm_image = None
+_shared_segmentation = None
+_shm_segmentation = None
+
+
+def _release_shared_memory():
+    global _shared_image, _shm_image, _shared_segmentation, _shm_segmentation
+    if _shm_image:
+        _shm_image.dispose()
+        _shm_image = None
+    if _shm_segmentation:
+        _shm_segmentation.dispose()
+        _shm_segmentation = None
+
+
+def _initialize_shared_memory(image: np.ndarray):
+    global _shared_image, _shm_image, _shared_segmentation, _shm_segmentation
+    segmentation_shape = image.shape[:2]
+    if (
+        _shared_image is not None
+        and _shm_image is not None
+        and _shared_segmentation is not None
+        and _shm_segmentation is not None
+    ):
+        if (
+            _shared_image.dtype == image.dtype
+            and _shared_image.shape == image.shape
+        ):
+
+            _shared_image = NDArray(
+                str(image.dtype), list(image.shape), _shm_image
+            )
+            _shared_segmentation = NDArray(
+                "uint8", list(segmentation_shape), _shm_segmentation
+            )
+            return
+        else:
+            _release_shared_memory()
+    _shm_image = SharedMemory(
+        create=True,
+        rsize=int(np.prod(image.shape) * np.dtype(image.dtype).itemsize),
+    )
+    _shared_image = NDArray(str(image.dtype), list(image.shape), _shm_image)
+
+    _shm_segmentation = SharedMemory(
+        create=True,
+        rsize=int(np.prod(segmentation_shape) * np.dtype("uint8").itemsize),
+    )
+    _shared_segmentation = NDArray(
+        "uint8", list(segmentation_shape), _shm_segmentation
+    )
 
 
 @magicgui(
@@ -107,23 +172,22 @@ def segmenter_widget(
     img: "napari.types.ImageData",
     segmenter: "str",
 ) -> "napari.types.LabelsData":
-    segmenter_module = initialize_environment(segmenter)
-    with tempfile.TemporaryDirectory() as tempdir:
-        input_path = Path(tempdir) / "image.npy"
-        output_path = Path(tempdir) / "segmentation.npy"
-        np.save(input_path, cast(np.ndarray, img.data))
-        segmenter_module.segment(
-            input_path, output_path, config[segmenter]["default_parameters"]
-        )
-        return np.load(output_path)
+    segmenter_module = _initialize_environment(segmenter)
+    _initialize_shared_memory(img)
+    segmenter_module.segment(
+        _shared_image,
+        config[segmenter]["default_parameters"],
+        _shared_segmentation,
+    )
+    return _shared_segmentation.ndarray()  # type: ignore
 
 
 def exit_environments():
-    global environment_manager
-    if environment_manager is None:
-        return
-    for _, environment in environment_manager.environments.items():
-        environment.exit()
+    _release_shared_memory()
+    global _services
+    for service in _services:
+        service.close()
+    _services = []
 
 
 # I need something like this

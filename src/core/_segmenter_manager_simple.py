@@ -1,17 +1,50 @@
+from pathlib import Path
 from typing import cast
 
-import appose
 import numpy as np
+from appose import NDArray, SharedMemory
+from appose.builder.pixi import PixiBuilder
 
 from core._segmenter_manager_base import SegmenterManagerBase
 
 
 class SegmenterManager(SegmenterManagerBase):
 
-    _shared_image: appose.NDArray | None = None
-    _shm_image: appose.SharedMemory | None = None
-    _shared_segmentation: appose.NDArray | None = None
-    _shm_segmentation: appose.SharedMemory | None = None
+    _shared_image: NDArray | None = None
+    _shm_image: SharedMemory | None = None
+    _shared_segmentation: NDArray | None = None
+    _shm_segmentation: SharedMemory | None = None
+
+    def _initialize_environment(self, name: str):
+        config = self.config[name]
+        environment = (
+            PixiBuilder()
+            .conda(config["dependencies"]["conda"] + ["appose"])
+            .pypi(config["dependencies"]["pip"])
+            .base("envs/" + name)
+            .log_debug()
+            .build()
+        )
+        import sys
+
+        service = environment.python()
+        self._services.append(service)
+        service.debug(lambda msg: print(msg, file=sys.stderr, end=""))
+
+        segmenter_path = (
+            Path(__file__).resolve().parent / "segmenters" / f"{name}.py"
+        )
+        segmenter_module = (
+            service.task(str(segmenter_path)).wait_for().result()
+        )
+
+        with open(segmenter_path) as f:
+            segmenters_script = f.read()
+            segmenter_module = (
+                service.task(segmenters_script).wait_for().result()
+            )
+
+        return segmenter_module
 
     def _initialize_shared_memory(self, image: np.ndarray):
         segmentation_shape = image.shape[:2]
@@ -26,30 +59,30 @@ class SegmenterManager(SegmenterManagerBase):
                 and self._shared_image.shape == image.shape
             ):
 
-                self._shared_image = appose.NDArray(
+                self._shared_image = NDArray(
                     str(image.dtype), list(image.shape), self._shm_image
                 )
-                self._shared_segmentation = appose.NDArray(
+                self._shared_segmentation = NDArray(
                     "uint8", list(segmentation_shape), self._shm_segmentation
                 )
                 return
             else:
                 self.release_shared_memory()
-        self._shm_image = appose.SharedMemory(
+        self._shm_image = SharedMemory(
             create=True,
             rsize=int(np.prod(image.shape) * np.dtype(image.dtype).itemsize),
         )
-        self._shared_image = appose.NDArray(
+        self._shared_image = NDArray(
             str(image.dtype), list(image.shape), self._shm_image
         )
 
-        self._shm_segmentation = appose.SharedMemory(
+        self._shm_segmentation = SharedMemory(
             create=True,
             rsize=int(
                 np.prod(segmentation_shape) * np.dtype("uint8").itemsize
             ),
         )
-        self._shared_segmentation = appose.NDArray(
+        self._shared_segmentation = NDArray(
             "uint8", list(segmentation_shape), self._shm_segmentation
         )
 
@@ -60,16 +93,11 @@ class SegmenterManager(SegmenterManagerBase):
             return super().perform_segmentation(image, segmenter)
         segmenter_module = self._initialize_environment(segmenter)
         self._initialize_shared_memory(image)
-        if self._shared_image is None or self._shared_segmentation is None:
-            return
-        if self._shm_image is None or self._shm_segmentation is None:
-            return
 
-        segmenter_module.segment_shared_memory(
-            self.config[segmenter]["module_name"],
+        segmenter_module.segment(
             self._shared_image,
-            self._shared_segmentation,
             self.config[segmenter]["default_parameters"],
+            self._shared_segmentation,
         )
         return self._shared_segmentation
 

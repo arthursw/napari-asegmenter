@@ -15,17 +15,6 @@ The plugin uses [Appose-python](https://github.com/apposed/appose-python) to ins
 
 ----------------------------------
 
-## Installation
-
-<!-- You can install `napari-wsegmenter` via [pip]:
-
-    pip install napari-wsegmenter
- -->
-
-To install latest development version :
-
-    pip install git+https://github.com/arthursw/napari-wsegmenter.git
-
 ## Installation, usage & development
 
 You can launch napari with the plugin by running `uv run python launch_napari.py`.
