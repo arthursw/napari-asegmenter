@@ -32,7 +32,7 @@ dependencies = [
     "numpy",
     "magicgui",
     "pyqt5==5.15.11",
-    "pyqt5-qt5==5.15.17",
+    "pyqt5-qt5==5.15.18",
     "qtpy==2.4.3",
     "scikit-image",
     "appose @ git+https://github.com/apposed/appose-python.git",
