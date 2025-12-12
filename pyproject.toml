@@ -35,7 +35,7 @@ dependencies = [
     "pyqt5-qt5==5.15.17",
     "qtpy==2.4.3",
     "scikit-image",
-    "appose",
+    "appose @ git+https://github.com/apposed/appose-python.git",
 ]
 
 [project.optional-dependencies]

@@ -5,9 +5,29 @@ visibility: public
 categories: ["Segmentation"]
 contributions:
   commands:
-    - id: napari-asegmenter.make_segment_widget
-      python_name: napari_asegmenter:SegmenterWidget
-      title: Make segment widget
+    - id: napari-asegmenter.make_cellpose
+      python_name: napari_asegmenter:cellpose
+      title: Make Cellpose
+    - id: napari-asegmenter.make_stardist
+      python_name: napari_asegmenter:stardist
+      title: Make Stardist
+    - id: napari-asegmenter.make_sam
+      python_name: napari_asegmenter:sam
+      title: Make Sam
+    - id: napari-asegmenter.make_exit_button
+      python_name: napari_asegmenter:exit_button
+      title: Make exit button
   widgets:
-    - command: napari-asegmenter.make_segment_widget
-      display_name: Segmenter
+    - command: napari-asegmenter.make_cellpose
+      display_name: Cellpose segmenter
+    - command: napari-asegmenter.make_stardist
+      display_name: Stardist segmenter
+    - command: napari-asegmenter.make_sam
+      display_name: SAM segmenter
+    - command: napari-asegmenter.make_exit_button
+      display_name: Exit
+  menus:
+    napari/layers/segment:
+      - command: napari-wsegmenter.make_cellpose
+      - command: napari-wsegmenter.make_stardist
+      - command: napari-wsegmenter.make_sam

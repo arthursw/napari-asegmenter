@@ -3,8 +3,6 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from ._widget import (
-    SegmenterWidget,
-)
+from ._widget_magicgui import cellpose, exit_button, sam, stardist
 
-__all__ = ("SegmenterWidget",)
+__all__ = ("stardist", "cellpose", "sam", "exit_button")
